@@ -45,6 +45,9 @@ class ScanResponse(BaseModel):
     recommendations: List[str] = []
     disclaimer: str
     mode: Literal["rules", "ml", "demo"]
+    # Text extracted by OCR from an uploaded image (immediate upload
+    # response only; raw OCR text is not persisted by default).
+    ocr_text: Optional[str] = None
 
 
 class ScanListItem(BaseModel):

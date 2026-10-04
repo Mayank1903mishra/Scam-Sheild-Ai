@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -50,6 +51,31 @@ app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(StarletteHTTPException, http_error_handler)
 app.add_exception_handler(Exception, generic_error_handler)
+
+# Multipart bodies are parsed before the endpoint runs, so oversized uploads
+# are rejected here first, before any file buffering. This middleware is
+# added before CORS and request-id so both wrap it (its responses still get
+# CORS headers and an X-Request-ID).
+UPLOAD_PATH = "/api/v1/scans/upload"
+MULTIPART_OVERHEAD_BYTES = 64 * 1024
+
+
+@app.middleware("http")
+async def enforce_upload_size_limit(request: Request, call_next):
+    if request.method == "POST" and request.url.path == UPLOAD_PATH:
+        content_length = request.headers.get("content-length", "")
+        if content_length.isdigit():
+            limit = get_max_upload_bytes() + MULTIPART_OVERHEAD_BYTES
+            if int(content_length) > limit:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": {
+                        "code": "FILE_TOO_LARGE",
+                        "message": f"Upload exceeds the {settings.max_upload_mb} MB limit",
+                    }},
+                )
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,

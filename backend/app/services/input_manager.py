@@ -33,6 +33,18 @@ class AnalysisOutput:
     masked_text: Optional[str] = None
 
 
+def _merge_text_results(*results: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge text-analysis results, keeping per-result evidence sources."""
+    merged: Dict[str, Any] = {"indicators": [], "score": 0, "categories": {}}
+    for result in results:
+        merged["indicators"].extend(result.get("indicators", []))
+        for category, weight in result.get("categories", {}).items():
+            merged["categories"][category] = merged["categories"].get(category, 0) + weight
+    total = sum(ind.get("weight", 0) for ind in merged["indicators"])
+    merged["score"] = min(100, max(0, total))
+    return merged
+
+
 class InputManager:
     """Coordinates input processing and analysis pipeline."""
 
@@ -77,25 +89,40 @@ class InputManager:
         # Deduplicate URLs
         urls = list(dict.fromkeys(urls))
 
-        # Analyze text
-        text_result = {"indicators": [], "score": 0, "categories": {}}
-        if combined_text.strip():
-            text_result = analyze_text(combined_text, source="text")
+        # Analyze user text and OCR text separately so each evidence item
+        # carries the correct source ("text" vs "ocr"), then merge results.
+        user_result = {"indicators": [], "score": 0, "categories": {}}
+        if input_data.text and input_data.text.strip():
+            user_result = analyze_text(input_data.text, source="text")
+
+        ocr_result = {"indicators": [], "score": 0, "categories": {}}
+        if input_data.ocr_text and input_data.ocr_text.strip():
+            ocr_result = analyze_text(input_data.ocr_text, source="ocr")
+
+        text_result = _merge_text_results(user_result, ocr_result)
 
         # Analyze URLs
         url_result = {"indicators": [], "score": 0, "features": []}
         if urls:
             url_result = analyze_urls(urls)
 
-        # Extract entities
-        extracted = extract_entities_combined([t for t in [input_data.text, input_data.ocr_text] if t])
+        # Extract entities (include the submitted URL so it appears in results)
+        extracted = extract_entities_combined(
+            [t for t in [input_data.text, input_data.ocr_text, input_data.url] if t]
+        )
+
+        # Length of OCR output only (None when no image was submitted)
+        ocr_text_length = None
+        if input_data.ocr_text is not None:
+            ocr_text_length = len(input_data.ocr_text.strip())
 
         # Fuse results
         fusion_result = fuse_results(
             text_result=text_result,
             url_result=url_result,
             ocr_confidence=input_data.ocr_confidence,
-            input_text=combined_text
+            input_text=combined_text,
+            ocr_text_length=ocr_text_length,
         )
 
         # Explain indicators

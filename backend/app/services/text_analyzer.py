@@ -102,6 +102,7 @@ class TextAnalyzer:
                             "weight": ind.weight,
                             "reason": ind.name,
                             "snippet": result.get("snippet", text[:100]),
+                            "source": source,
                         })
                         category_weights[ind.category] = category_weights.get(ind.category, 0) + ind.weight
                 continue
@@ -121,6 +122,7 @@ class TextAnalyzer:
                     "weight": ind.weight,
                     "reason": ind.name,
                     "snippet": ' ... '.join(matched_snippets[:3]),
+                    "source": source,
                 })
                 category_weights[ind.category] = category_weights.get(ind.category, 0) + ind.weight
 

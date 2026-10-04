@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from typing import Optional
+from typing import List, Optional
+from typing_extensions import Annotated
 from uuid import UUID
 from sqlalchemy.orm import Session
 import json
 
+from app.config import settings, get_max_upload_bytes
+from app.exceptions import AppError
 from app.schemas.request import ScanTextRequest, ScanUploadRequest, FeedbackRequest
 from app.schemas.response import ScanResponse, ScanListItem, FeedbackResponse, EvidenceItem, ExtractedData, UncertaintyInfo, ModuleScores
 from app.db import get_db_session
 from app.db.repository import create_scan, get_scan, list_scans, delete_scan, submit_feedback
 from app.services import analyze_input
 from app.services.privacy import mask_pii
+from app.services.image_validator import validate_and_sanitize
+from app.services import ocr as ocr_service
 
 
 router = APIRouter(prefix="/scans", tags=["scans"])
@@ -23,47 +28,22 @@ def get_db():
         db.close()
 
 
-@router.post("", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
-async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(get_db)):
-    if not request.has_input():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="At least one of 'text' or 'url' must be provided"
-        )
+def _evidence_for_storage(result) -> List[dict]:
+    """Evidence rows with PII masked before storage (spec section 8)."""
+    return [
+        {
+            "id": e["id"],
+            "source": e["source"],
+            "reason": e["reason"],
+            "snippet": mask_pii(e["snippet"])[0] if e["snippet"] else "",
+            "weight": e["weight"],
+        }
+        for e in result.evidence
+    ]
 
-    # Run analysis
-    result = analyze_input(text=request.text, url=request.url)
 
-    input_types = []
-    if request.text:
-        input_types.append("text")
-    if request.url:
-        input_types.append("url")
-
-    # Save to database (PII masked before storage, per spec section 8)
-    scan = create_scan(
-        db,
-        input_types=input_types,
-        risk_score=result.risk_score,
-        risk_band=result.risk_band,
-        category=result.category,
-        uncertainty=result.uncertainty,
-        mode=result.mode,
-        masked_text=result.masked_text,
-        evidence_list=[
-            {
-                "id": e["id"],
-                "source": e["source"],
-                "reason": e["reason"],
-                "snippet": mask_pii(e["snippet"])[0] if e["snippet"] else "",
-                "weight": e["weight"],
-            }
-            for e in result.evidence
-        ],
-    )
-
-    # Build response (raw snippets returned only in immediate response for highlighting)
-
+def _build_scan_response(scan, result, input_types: List[str], ocr_text: Optional[str] = None) -> ScanResponse:
+    """Build the standard scan response from an analysis result."""
     return ScanResponse(
         id=scan.id,
         created_at=scan.created_at,
@@ -97,18 +77,106 @@ async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(g
         recommendations=result.recommendations,
         disclaimer=result.disclaimer,
         mode=result.mode,
+        ocr_text=ocr_text,
     )
+
+
+@router.post("", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
+async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(get_db)):
+    if not request.has_input():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="At least one of 'text' or 'url' must be provided"
+        )
+
+    # Run analysis
+    result = analyze_input(text=request.text, url=request.url)
+
+    input_types = []
+    if request.text:
+        input_types.append("text")
+    if request.url:
+        input_types.append("url")
+
+    # Save to database (PII masked before storage, per spec section 8)
+    scan = create_scan(
+        db,
+        input_types=input_types,
+        risk_score=result.risk_score,
+        risk_band=result.risk_band,
+        category=result.category,
+        uncertainty=result.uncertainty,
+        mode=result.mode,
+        masked_text=result.masked_text,
+        evidence_list=_evidence_for_storage(result),
+    )
+
+    return _build_scan_response(scan, result, input_types)
 
 
 @router.post("/upload", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
 async def upload_scan(
-    file: UploadFile = File(...),
-    text: Optional[str] = Form(None),
-    url: Optional[str] = Form(None),
+    file: Annotated[UploadFile, File(...)],
+    text: Annotated[Optional[str], Form(max_length=10000)] = None,
+    url: Annotated[Optional[str], Form(max_length=2048)] = None,
     db: Session = Depends(get_db),
 ):
-    # OCR not implemented yet - will be added in Stage 5
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Upload/OCR not implemented yet")
+    """Accept an image screenshot (PNG/JPEG/WebP), OCR it locally, and
+    run the standard analysis pipeline on the extracted text.
+
+    The image is validated by content (never by filename/extension),
+    never executed, never served back, and never persisted.
+    """
+    # Read at most limit + 1 bytes so oversized files are rejected
+    # without buffering them entirely (an earlier middleware rejects
+    # clearly oversized requests before multipart parsing).
+    data = await file.read(get_max_upload_bytes() + 1)
+    if len(data) > get_max_upload_bytes():
+        raise AppError(
+            "FILE_TOO_LARGE",
+            f"File exceeds the {settings.max_upload_mb} MB upload limit",
+            413,
+        )
+
+    image = validate_and_sanitize(data)
+
+    # Local OCR; temporary file is deleted inside run_ocr, even on errors.
+    ocr_result = ocr_service.run_ocr(image)
+
+    text = text.strip() if text else None
+    url = url.strip() if url else None
+    if text == "":
+        text = None
+    if url == "":
+        url = None
+
+    result = analyze_input(
+        text=text,
+        url=url,
+        ocr_text=ocr_result.text,
+        ocr_confidence=ocr_result.confidence,
+    )
+
+    input_types = []
+    if text:
+        input_types.append("text")
+    if url:
+        input_types.append("url")
+    input_types.append("image")
+
+    scan = create_scan(
+        db,
+        input_types=input_types,
+        risk_score=result.risk_score,
+        risk_band=result.risk_band,
+        category=result.category,
+        uncertainty=result.uncertainty,
+        mode=result.mode,
+        masked_text=result.masked_text,
+        evidence_list=_evidence_for_storage(result),
+    )
+
+    return _build_scan_response(scan, result, input_types, ocr_text=ocr_result.text)
 
 
 @router.get("", response_model=list[ScanListItem])
@@ -163,6 +231,7 @@ async def get_scan_endpoint(scan_id: UUID, db: Session = Depends(get_db)):
         recommendations=["Verify independently"],
         disclaimer="Risk indicators are not proof of fraud.",
         mode=scan.mode,
+        ocr_text=None,  # raw OCR text is not persisted by default
     )
 
 

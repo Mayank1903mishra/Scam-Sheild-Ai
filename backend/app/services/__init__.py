@@ -5,6 +5,8 @@ from .evidence import extract_entities, extract_entities_combined, extract_phone
 from .fusion import fuse_results, FusionResult, score_to_band, select_category, get_recommendations
 from .explain import explain_indicators, generate_summary, get_disclaimer, format_evidence_for_display
 from .privacy import mask_pii, extract_pii, extract_urls, extract_domains, extract_all
+from .image_validator import validate_and_sanitize, sniff_format
+from .ocr import OCRResult, run_ocr, tesseract_available
 
 __all__ = [
     "InputManager",
@@ -35,4 +37,9 @@ __all__ = [
     "extract_urls",
     "extract_domains",
     "extract_all",
+    "validate_and_sanitize",
+    "sniff_format",
+    "OCRResult",
+    "run_ocr",
+    "tesseract_available",
 ]

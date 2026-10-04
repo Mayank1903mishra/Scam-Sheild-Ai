@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     demo_mode: bool = False
     rate_limit: str = "30/minute"
 
+    # Image upload limits
+    max_image_pixels: int = 25_000_000
+    max_image_dimension: int = 10_000
+
+    # OCR (Tesseract)
+    tesseract_cmd: str = ""
+    ocr_timeout_seconds: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

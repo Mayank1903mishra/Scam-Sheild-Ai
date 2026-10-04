@@ -88,9 +88,15 @@ def calculate_uncertainty(
     text_length: int,
     ocr_confidence: float,
     module_scores: Dict[str, int],
-    indicators: List[Dict[str, Any]]
+    indicators: List[Dict[str, Any]],
+    ocr_text_length: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Calculate uncertainty level and reasons."""
+    """Calculate uncertainty level and reasons.
+
+    ocr_text_length: length of OCR output when an image was submitted,
+    or None when no image was part of the input. Low/empty OCR output
+    raises uncertainty (limits certainty) but never raises the score.
+    """
     reasons = []
     level = "low"
 
@@ -104,6 +110,16 @@ def calculate_uncertainty(
         reasons.append(f"Low OCR confidence ({ocr_confidence:.0%})")
         if level == "low":
             level = "medium"
+
+    # Image submitted but OCR produced little or no usable text
+    if ocr_text_length is not None:
+        if ocr_text_length == 0:
+            reasons.append("No text could be extracted from the image; analysis is limited")
+            level = "high"
+        elif ocr_text_length < 20:
+            reasons.append("Very little text was extracted from the image; analysis is limited")
+            if level == "low":
+                level = "medium"
 
     # Conflicting modules (one high, one low)
     scores = [s for s in module_scores.values() if s > 0]
@@ -166,7 +182,8 @@ def fuse_results(
     text_result: Dict[str, Any],
     url_result: Dict[str, Any],
     ocr_confidence: float = 0.0,
-    input_text: str = ""
+    input_text: str = "",
+    ocr_text_length: Optional[int] = None,
 ) -> FusionResult:
     """
     Fuse results from multiple analysis modules.
@@ -177,12 +194,12 @@ def fuse_results(
 
     for ind in text_result.get("indicators", []):
         ind_copy = ind.copy()
-        ind_copy["source"] = "text"
+        ind_copy["source"] = ind.get("source", "text")
         all_indicators.append(ind_copy)
 
     for ind in url_result.get("indicators", []):
         ind_copy = ind.copy()
-        ind_copy["source"] = "url"
+        ind_copy["source"] = ind.get("source", "url")
         all_indicators.append(ind_copy)
 
     # Module scores
@@ -212,7 +229,8 @@ def fuse_results(
         text_length=len(input_text),
         ocr_confidence=ocr_confidence,
         module_scores=module_scores,
-        indicators=all_indicators
+        indicators=all_indicators,
+        ocr_text_length=ocr_text_length,
     )
 
     # Get recommendations

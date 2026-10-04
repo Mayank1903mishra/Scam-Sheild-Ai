@@ -7,7 +7,21 @@ Multi-modal scam and fraud analysis tool for students. Analyzes text, URLs, and 
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Tesseract OCR (system dependency)
+- Tesseract OCR (system dependency, used for local screenshot OCR)
+
+### Install Tesseract OCR
+The image/screenshot feature runs OCR locally with Tesseract - no API keys,
+no paid services, no data leaves your machine.
+- **Windows:** `winget install UB-Mannheim.TesseractOCR` (or download the
+  installer from https://github.com/UB-Mannheim/tesseract/wiki). If it is
+  not on PATH, set `TESSERACT_CMD` in `.env` to the full path of
+  `tesseract.exe` (e.g. `C:\Program Files\Tesseract-OCR\tesseract.exe`).
+- **macOS:** `brew install tesseract`
+- **Linux:** `sudo apt install tesseract-ocr`
+
+If Tesseract is missing, image uploads return a clear
+`OCR_UNAVAILABLE` error instead of fake text; text and URL analysis
+keep working.
 
 ### Backend Setup
 ```bash
