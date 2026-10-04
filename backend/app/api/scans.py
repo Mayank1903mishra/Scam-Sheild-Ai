@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from typing import List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
@@ -7,6 +7,7 @@ import json
 
 from app.config import settings, get_max_upload_bytes
 from app.exceptions import AppError
+from app.ratelimit import limiter
 from app.schemas.request import ScanTextRequest, ScanUploadRequest, FeedbackRequest
 from app.schemas.response import ScanResponse, ScanListItem, FeedbackResponse, EvidenceItem, ExtractedData, UncertaintyInfo, ModuleScores
 from app.db import get_db_session
@@ -84,20 +85,21 @@ def _build_scan_response(scan, result, input_types: List[str], ocr_text: Optiona
 
 
 @router.post("", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
-async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(get_db)):
-    if not request.has_input():
+@limiter.limit(lambda: settings.rate_limit)
+async def create_scan_endpoint(request: Request, body: ScanTextRequest, db: Session = Depends(get_db)):
+    if not body.has_input():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="At least one of 'text' or 'url' must be provided"
         )
 
     # Run analysis
-    result = analyze_input(text=request.text, url=request.url)
+    result = analyze_input(text=body.text, url=body.url)
 
     input_types = []
-    if request.text:
+    if body.text:
         input_types.append("text")
-    if request.url:
+    if body.url:
         input_types.append("url")
 
     # Save to database (PII masked before storage, per spec section 8)
@@ -117,7 +119,9 @@ async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(g
 
 
 @router.post("/upload", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(lambda: settings.rate_limit)
 async def upload_scan(
+    request: Request,
     file: Annotated[UploadFile, File(...)],
     text: Annotated[Optional[str], Form(max_length=10000)] = None,
     url: Annotated[Optional[str], Form(max_length=2048)] = None,
@@ -257,8 +261,9 @@ async def delete_scan_endpoint(scan_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{scan_id}/feedback", response_model=FeedbackResponse)
-async def submit_feedback_endpoint(scan_id: UUID, request: FeedbackRequest, db: Session = Depends(get_db)):
-    feedback = submit_feedback(db, str(scan_id), request.helpful, request.comment)
+@limiter.limit(lambda: settings.rate_limit)
+async def submit_feedback_endpoint(request: Request, scan_id: UUID, body: FeedbackRequest, db: Session = Depends(get_db)):
+    feedback = submit_feedback(db, str(scan_id), body.helpful, body.comment)
     if not feedback:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
     return FeedbackResponse(message="Feedback submitted")

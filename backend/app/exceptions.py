@@ -38,6 +38,10 @@ async def http_error_handler(request: Request, exc: StarletteHTTPException) -> J
 
 
 async def generic_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Log the exception server-side (stack trace only; the request body is
+    # never logged) so 500s are debuggable without leaking content to clients.
+    import logging
+    logging.getLogger("app.errors").error("unhandled exception", exc_info=exc)
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

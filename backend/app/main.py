@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 import uuid
@@ -11,6 +9,7 @@ import logging
 
 from app.config import settings, get_allowed_origins, get_max_upload_bytes
 from app.api import health_router, scans_router
+from app.ratelimit import limiter
 from app.exceptions import (
     AppError,
     app_error_handler,
@@ -23,7 +22,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.db import init_db
 
 
-limiter = Limiter(key_func=get_remote_address)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """429 responses use the standard error shape like every other error."""
+    return JSONResponse(
+        status_code=429,
+        content={"error": {
+            "code": "RATE_LIMITED",
+            "message": f"Too many requests (limit: {exc.detail}). Please wait and try again.",
+        }},
+    )
 
 
 @asynccontextmanager
@@ -45,7 +52,7 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(RequestValidationError, validation_error_handler)
