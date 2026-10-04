@@ -1,0 +1,382 @@
+# ScamShield AI - Rule-based Indicators
+# Each indicator has an ID, weight, pattern, and metadata.
+# Weights are positive (risk) or negative (legitimacy signal).
+# Final score is bounded weighted sum normalized to 0-100.
+
+indicators:
+  # === Urgency / Pressure ===
+  - id: URGENCY_LANGUAGE
+    name: "Urgency language detected"
+    description: "Message uses urgent or time-pressure language"
+    weight: 15
+    category: "PRESSURE"
+    patterns:
+      - "urgent"
+      - "immediate"
+      - "asap"
+      - "right now"
+      - "hurry"
+      - "limited time"
+      - "expires today"
+      - "last chance"
+      - "act now"
+      - "deadline"
+      - "today only"
+      - "expire soon"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  - id: UPFRONT_PAYMENT
+    name: "Upfront payment requested"
+    description: "Requests payment, fee, or deposit before starting"
+    weight: 25
+    category: "PAYMENT"
+    patterns:
+      - "registration fee"
+      - "security fee"
+      - "processing fee"
+      - "admin fee"
+      - "deposit"
+      - "upfront"
+      - "pay before"
+      - "payment required"
+      - "fee to"
+      - "pay for"
+      - "pay fee"
+      - "charge"
+      - "deposit required"
+      - "advance payment"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  - id: GUARANTEED_SELECTION
+    name: "Guaranteed selection/acceptance"
+    description: "Promises guaranteed job, internship, or selection"
+    weight: 20
+    category: "PROMISE"
+    patterns:
+      - "guaranteed"
+      - "100% placement"
+      - "assured"
+      - "confirm selection"
+      - "definitely selected"
+      - "guarantee"
+      - "sure shot"
+      - "no rejection"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  - id: UNREALISTIC_SALARY
+    name: "Unrealistic salary/earnings claim"
+    description: "Promises unusually high salary or earnings"
+    weight: 20
+    category: "PROMISE"
+    patterns:
+      - "earn.*\\$?\\d{4,}"
+      - "salary.*\\$?\\d{4,}"
+      - "make.*\\$?\\d{4,}.week"
+      - "make.*\\$?\\d{4,}.month"
+      - "high paying"
+      - "lucrative"
+      - "huge income"
+      - "earn thousands"
+      - "six figure"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  # === Credential / OTP Requests ===
+  - id: CREDENTIAL_REQUEST
+    name: "Credential or OTP request"
+    description: "Asks for passwords, OTP, or login credentials"
+    weight: 30
+    category: "PHISHING"
+    patterns:
+      - "password"
+      - "otp"
+      - "one.time.password"
+      - "login.*credential"
+      - "verify.*account"
+      - "share.*otp"
+      - "send.*otp"
+      - "confirm.*otp"
+      - "bank.*detail"
+      - "account.*number"
+      - "cvv"
+      - "pin"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  # === Impersonation / Brand ===
+  - id: BRAND_IMPERSONATION
+    name: "Brand impersonation detected"
+    description: "References well-known brands in suspicious context"
+    weight: 15
+    category: "IMPERSONATION"
+    patterns:
+      - "google.*job"
+      - "microsoft.*internship"
+      - "amazon.*hiring"
+      - "facebook.*recruit"
+      - "apple.*career"
+      - "linkedin.*offer"
+      - "tcs.*offer"
+      - "infosys.*job"
+      - "wipro.*placement"
+    scope: ["text", "ocr", "url"]
+    case_insensitive: true
+
+  - id: FREEMAIL_SENDER
+    name: "Free email domain for official communication"
+    description: "Company claims to use free email (gmail, yahoo, outlook, etc.)"
+    weight: 10
+    category: "IMPERSONATION"
+    patterns:
+      - "@gmail\\.com"
+      - "@yahoo\\.com"
+      - "@outlook\\.com"
+      - "@hotmail\\.com"
+      - "@live\\.com"
+      - "@icloud\\.com"
+      - "@protonmail"
+      - "@aol\\.com"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  # === Payment Pressure ===
+  - id: PAYMENT_PRESSURE
+    name: "Payment pressure via UPI/wallet/transfer"
+    description: "Pressures to pay via specific methods (UPI, wallet, crypto, wire)"
+    weight: 20
+    category: "PAYMENT"
+    patterns:
+      - "upi"
+      - "gpay"
+      - "phonepe"
+      - "paytm"
+      - "wallet"
+      - "crypto"
+      - "bitcoin"
+      - "wire transfer"
+      - "bank transfer"
+      - "western union"
+      - "moneygram"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  - id: OFF_PLATFORM_CONTACT
+    name: "Off-platform contact pressure"
+    description: "Requests to move communication off official platform"
+    weight: 15
+    category: "PRESSURE"
+    patterns:
+      - "whatsapp"
+      - "telegram"
+      - "signal"
+      - "personal email"
+      - "direct message"
+      - "dm me"
+      - "contact me on"
+      - "chat on"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  # === Suspicious Rewards ===
+  - id: REWARD_PROMISE
+    name: "Suspicious reward/certificate promise"
+    description: "Promises certificates, rewards, or gifts for payment"
+    weight: 15
+    category: "PROMISE"
+    patterns:
+      - "certificate.*payment"
+      - "certificate.*fee"
+      - "gift.*card"
+      - "reward.*payment"
+      - "prize.*fee"
+      - "win.*money"
+      - "cash.*prize"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+
+  # === Student-specific scam types ===
+  - id: FAKE_INTERNSHIP
+    name: "Fake internship indicators"
+    description: "Patterns typical of fake internship offers"
+    weight: 20
+    category: "FAKE_INTERNSHIP"
+    patterns:
+      - "internship.*fee"
+      - "internship.*deposit"
+      - "guaranteed.*internship"
+      - "certificate.*internship"
+      - "virtual.*internship.*pay"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  - id: FAKE_SCHOLARSHIP
+    name: "Fake scholarship indicators"
+    description: "Requests fee or bank details to release scholarship"
+    weight: 25
+    category: "FAKE_SCHOLARSHIP"
+    patterns:
+      - "scholarship.*fee"
+      - "scholarship.*deposit"
+      - "release.*scholarship"
+      - "bank.*detail.*scholarship"
+      - "processing.*scholarship"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  - id: FAKE_AMBASSADOR
+    name: "Fake ambassador program"
+    description: "Ambassador role requiring deposits or kit purchases"
+    weight: 20
+    category: "FAKE_AMBASSADOR"
+    patterns:
+      - "ambassador.*kit"
+      - "ambassador.*deposit"
+      - "brand.*ambassador.*pay"
+      - "campus.*ambassador.*fee"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  - id: FAKE_TRAINING
+    name: "Paid training with placement promise"
+    description: "Paid certification/training promising guaranteed placement"
+    weight: 20
+    category: "FAKE_TRAINING"
+    patterns:
+      - "training.*placement"
+      - "certification.*guaranteed"
+      - "course.*guaranteed.*job"
+      - "pay.*training.*job"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  # === Negative signals (legitimacy) ===
+  - id: OFFICIAL_DOMAIN
+    name: "Official company domain"
+    description: "Email/URL uses official company domain (not freemail)"
+    weight: -10
+    category: "LEGITIMATE"
+    patterns: []
+    scope: ["url"]
+    check_function: "check_official_domain"
+
+  - id: VERIFIABLE_CONTACT
+    name: "Verifiable contact information"
+    description: "Provides verifiable company contact details"
+    weight: -5
+    category: "LEGITIMATE"
+    patterns: []
+    scope: ["text", "ocr"]
+    check_function: "check_verifiable_contact"
+
+
+# === URL-specific indicators ===
+url_indicators:
+  - id: URL_IP_HOST
+    name: "URL uses IP address as host"
+    description: "URL host is an IP address instead of domain name"
+    weight: 25
+    category: "SUSPICIOUS_URL"
+    check_function: "check_ip_host"
+
+  - id: URL_PUNYCODE
+    name: "Punycode/IDN homograph"
+    description: "URL uses punycode (xn--) for homograph attack"
+    weight: 30
+    category: "SUSPICIOUS_URL"
+    check_function: "check_punycode"
+
+  - id: URL_MANY_SUBDOMAINS
+    name: "Excessive subdomains"
+    description: "URL has many subdomain levels (subdomain stacking)"
+    weight: 15
+    category: "SUSPICIOUS_URL"
+    check_function: "check_many_subdomains"
+    threshold: 3
+
+  - id: URL_AT_SYMBOL
+    name: "@ symbol in URL"
+    description: "URL contains @ symbol (credential embedding)"
+    weight: 25
+    category: "SUSPICIOUS_URL"
+    check_function: "check_at_symbol"
+
+  - id: URL_SUSPICIOUS_TLD
+    name: "Suspicious TLD"
+    description: "URL uses TLD commonly associated with abuse"
+    weight: 10
+    category: "SUSPICIOUS_URL"
+    check_function: "check_suspicious_tld"
+
+  - id: URL_BRAND_LOOKALIKE
+    name: "Brand lookalike domain"
+    description: "Domain resembles known brand (typosquatting)"
+    weight: 20
+    category: "SUSPICIOUS_URL"
+    check_function: "check_brand_lookalike"
+
+  - id: URL_SHORTENER
+    name: "URL shortener detected"
+    description: "URL uses known shortening service"
+    weight: 15
+    category: "SUSPICIOUS_URL"
+    check_function: "check_shortener"
+
+  - id: URL_HIGH_ENTROPY
+    name: "High entropy domain"
+    description: "Domain name has high character entropy (algorithmically generated)"
+    weight: 10
+    category: "SUSPICIOUS_URL"
+    check_function: "check_high_entropy"
+    threshold: 3.5
+
+  - id: URL_SUSPICIOUS_TOKENS
+    name: "Suspicious tokens in URL"
+    description: "URL path/query contains suspicious tokens"
+    weight: 10
+    category: "SUSPICIOUS_URL"
+    check_function: "check_suspicious_tokens"
+
+  - id: URL_LONG_LENGTH
+    name: "Excessively long URL"
+    description: "URL length exceeds typical legitimate URLs"
+    weight: 5
+    category: "SUSPICIOUS_URL"
+    check_function: "check_long_url"
+    threshold: 100
+
+  # HTTPS is never treated as a safety signal (per spec)
+  # No positive indicator for HTTPS
+
+
+# Risk band thresholds (provisional, configurable)
+risk_bands:
+  LOW: [0, 30]
+  MODERATE: [31, 60]
+  HIGH: [61, 80]
+  VERY_HIGH: [81, 100]
+  UNCERTAIN: "special"  # Determined by uncertainty logic, not score
+
+
+# Category selection rules
+# When multiple category-specific indicators fire, highest weight wins
+categories:
+  - FAKE_INTERNSHIP
+  - FAKE_JOB
+  - FAKE_OFFER_LETTER
+  - FAKE_AMBASSADOR
+  - FAKE_SCHOLARSHIP
+  - FAKE_TRAINING
+  - FAKE_PLACEMENT
+  - PHISHING
+  - PAYMENT_SCAM
+  - LEGITIMATE_LIKELY
+  - UNCERTAIN

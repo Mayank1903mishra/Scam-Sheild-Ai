@@ -7,7 +7,8 @@ import json
 from app.schemas.request import ScanTextRequest, ScanUploadRequest, FeedbackRequest
 from app.schemas.response import ScanResponse, ScanListItem, FeedbackResponse, EvidenceItem, ExtractedData, UncertaintyInfo, ModuleScores
 from app.db import get_db_session
-from app.db.repository import get_scan, list_scans, delete_scan, submit_feedback
+from app.db.repository import create_scan, get_scan, list_scans, delete_scan, submit_feedback
+from app.services import analyze_input
 
 
 router = APIRouter(prefix="/scans", tags=["scans"])
@@ -22,13 +23,79 @@ def get_db():
 
 
 @router.post("", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
-async def create_scan(request: ScanTextRequest, db: Session = Depends(get_db)):
+async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(get_db)):
     if not request.has_input():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="At least one of 'text' or 'url' must be provided"
         )
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Analysis not implemented yet")
+
+    # Run analysis
+    result = analyze_input(text=request.text, url=request.url)
+
+    # Save to database
+    scan = create_scan(
+        db,
+        input_types=result.module_scores.keys() if False else ["text"] + (["url"] if request.url else []),
+        risk_score=result.risk_score,
+        risk_band=result.risk_band,
+        category=result.category,
+        uncertainty=result.uncertainty,
+        mode=result.mode,
+        masked_text=result.masked_text,
+        evidence_list=[
+            {
+                "id": e["id"],
+                "source": e["source"],
+                "reason": e["reason"],
+                "snippet": e["snippet"],
+                "weight": e["weight"],
+            }
+            for e in result.evidence
+        ],
+    )
+
+    # Build response
+    input_types = []
+    if request.text:
+        input_types.append("text")
+    if request.url:
+        input_types.append("url")
+
+    return ScanResponse(
+        id=scan.id,
+        created_at=scan.created_at,
+        input_types=input_types,
+        risk_score=result.risk_score,
+        risk_band=result.risk_band,
+        score_note="Heuristic score, not a probability; thresholds provisional.",
+        category=result.category,
+        uncertainty=UncertaintyInfo(**result.uncertainty),
+        modules=ModuleScores(
+            text=result.module_scores.get("text", 0),
+            url=result.module_scores.get("url", 0),
+            ocr_confidence=result.module_scores.get("ocr_confidence", 0.0),
+        ),
+        evidence=[
+            EvidenceItem(
+                id=e["id"],
+                source=e["source"],
+                reason=e["reason"],
+                snippet=e["snippet"],
+                weight=e["weight"],
+            )
+            for e in result.evidence
+        ],
+        extracted=ExtractedData(
+            urls=result.extracted.get("urls", []),
+            emails=result.extracted.get("emails", []),
+            phones=result.extracted.get("phones", []),
+            domains=result.extracted.get("domains", []),
+        ),
+        recommendations=result.recommendations,
+        disclaimer=result.disclaimer,
+        mode=result.mode,
+    )
 
 
 @router.post("/upload", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
@@ -38,7 +105,8 @@ async def upload_scan(
     url: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Upload not implemented yet")
+    # OCR not implemented yet - will be added in Stage 5
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Upload/OCR not implemented yet")
 
 
 @router.get("", response_model=list[ScanListItem])
