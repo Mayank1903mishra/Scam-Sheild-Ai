@@ -27,7 +27,9 @@ class UncertaintyInfo(BaseModel):
 class ModuleScores(BaseModel):
     text: int = 0
     url: int = 0
-    ocr_confidence: float = 0.0
+    # None = not retained (OCR runs on a temporary file that is deleted
+    # after analysis; the confidence value itself is not persisted).
+    ocr_confidence: Optional[float] = None
 
 
 class ScanResponse(BaseModel):

@@ -14,6 +14,8 @@ from app.db.repository import create_scan, get_scan, list_scans, delete_scan, su
 from app.services import analyze_input
 from app.services.privacy import mask_pii
 from app.services.image_validator import validate_and_sanitize
+from app.services.explain import get_disclaimer
+from app.services.fusion import get_recommendations
 from app.services import ocr as ocr_service
 
 
@@ -216,6 +218,13 @@ async def get_scan_endpoint(scan_id: UUID, db: Session = Depends(get_db)):
         for e in evidence
     ]
 
+    # Module scores are recomputed deterministically from the persisted
+    # evidence weights (same bounded sums the fusion used at analysis time).
+    # OCR confidence is not persisted, so it is returned as None ("not
+    # retained") rather than a fabricated number.
+    text_sum = sum(e.weight for e in evidence if e.source in ("text", "ocr"))
+    url_sum = sum(e.weight for e in evidence if e.source == "url")
+
     return ScanResponse(
         id=scan.id,
         created_at=scan.created_at,
@@ -225,11 +234,15 @@ async def get_scan_endpoint(scan_id: UUID, db: Session = Depends(get_db)):
         score_note="Heuristic score, not a probability; thresholds provisional.",
         category=scan.category,
         uncertainty=UncertaintyInfo(**uncertainty),
-        modules=ModuleScores(),
+        modules=ModuleScores(
+            text=min(100, max(0, text_sum)),
+            url=min(100, max(0, url_sum)),
+            ocr_confidence=None,
+        ),
         evidence=evidence_items,
         extracted=ExtractedData(),
-        recommendations=["Verify independently"],
-        disclaimer="Risk indicators are not proof of fraud.",
+        recommendations=get_recommendations(scan.risk_band),
+        disclaimer=get_disclaimer(),
         mode=scan.mode,
         ocr_text=None,  # raw OCR text is not persisted by default
     )

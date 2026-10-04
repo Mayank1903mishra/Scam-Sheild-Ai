@@ -38,13 +38,21 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev        # http://localhost:5173 (talks to the backend on http://localhost:8000)
 ```
+The dev origin `http://localhost:5173` is in the backend CORS allow-list.
+To point the UI at another backend, set `VITE_API_BASE` (e.g.
+`VITE_API_BASE=http://localhost:9000 npm run dev`).
 
 ### Run Tests
 ```bash
+# Backend (pytest)
 cd backend
-pytest
+.venv\Scripts\python -m pytest tests/ -q      # Windows
+# Frontend (vitest + typecheck + production build)
+cd frontend
+npm test
+npm run build
 ```
 
 ## Project Structure
