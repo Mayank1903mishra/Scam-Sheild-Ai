@@ -18,6 +18,8 @@ INDICATOR_EXPLANATIONS = {
     "FAKE_SCHOLARSHIP": "The message requests fees or bank details to 'release' a scholarship - legitimate scholarships don't require payment.",
     "FAKE_AMBASSADOR": "The ambassador program requires deposits or kit purchases - legitimate programs don't ask for money.",
     "FAKE_TRAINING": "Paid training with guaranteed placement promises is a common scam pattern.",
+    "FAKE_JOB": "The message shows patterns typical of fake job offers, such as fees before joining or no interview.",
+    "FAKE_PLACEMENT": "The message shows patterns typical of fake placement drives, such as mass recruitment requiring an upfront fee.",
     "URL_IP_HOST": "The URL uses an IP address instead of a domain name, which is uncommon for legitimate sites.",
     "URL_PUNYCODE": "The URL uses punycode (xn--) which can be used for homograph attacks (lookalike domains).",
     "URL_MANY_SUBDOMAINS": "The URL has an unusual number of subdomains, a technique used to mimic legitimate domains.",

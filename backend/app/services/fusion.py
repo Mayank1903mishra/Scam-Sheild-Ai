@@ -116,7 +116,8 @@ def calculate_uncertainty(
     # No indicators found
     if not indicators:
         reasons.append("No risk indicators detected")
-        level = "low"
+        # Do not downgrade: level stays "low" for adequate-length input,
+        # but remains "high"/"medium" when set by short input or low OCR confidence.
 
     return {
         "level": level,

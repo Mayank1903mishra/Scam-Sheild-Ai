@@ -4,13 +4,18 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import uuid
 
 
 def generate_uuid() -> str:
     return str(uuid.uuid4())
+
+
+def utcnow() -> datetime:
+    """Naive UTC timestamp (SQLite DateTime columns store naive values)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Scan(Base):
@@ -37,10 +42,8 @@ class Scan(Base):
 
     def __init__(self, **kwargs):
         if "expires_at" not in kwargs:
-            retention_days = 30
             from app.config import settings
-            retention_days = settings.retention_days
-            kwargs["expires_at"] = datetime.utcnow() + timedelta(days=retention_days)
+            kwargs["expires_at"] = utcnow() + timedelta(days=settings.retention_days)
         super().__init__(**kwargs)
 
 

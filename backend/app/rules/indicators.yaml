@@ -258,6 +258,37 @@ indicators:
     case_insensitive: true
     is_regex: true
 
+  - id: FAKE_JOB
+    name: "Fake job indicators"
+    description: "Patterns typical of fake job offers - no interview, payment before joining"
+    weight: 25
+    category: "FAKE_JOB"
+    patterns:
+      - "job.*fee"
+      - "job.*deposit"
+      - "no interview"
+      - "payment before joining"
+      - "join.*fee"
+      - "hiring.*fee"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
+  - id: FAKE_PLACEMENT
+    name: "Fake placement drive indicators"
+    description: "Mass recruitment drives with upfront fees"
+    weight: 25
+    category: "FAKE_PLACEMENT"
+    patterns:
+      - "placement.*fee"
+      - "placement.*deposit"
+      - "mass recruitment"
+      - "recruitment drive.*fee"
+      - "guaranteed placement.*pay"
+    scope: ["text", "ocr"]
+    case_insensitive: true
+    is_regex: true
+
   # === Negative signals (legitimacy) ===
   - id: OFFICIAL_DOMAIN
     name: "Official company domain"

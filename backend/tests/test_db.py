@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from app.db.models import Scan, Evidence, Feedback
+from app.db.models import Scan, Evidence, Feedback, utcnow
 from app.db.repository import (
     create_scan,
     get_scan,
@@ -46,7 +46,7 @@ class TestDatabaseModels:
             uncertainty_json='{"level": "low", "reasons": []}',
             mode="rules",
             masked_text="masked content",
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=utcnow() + timedelta(days=30),
         )
         db_session.add(scan)
         db_session.commit()
@@ -63,7 +63,7 @@ class TestDatabaseModels:
             risk_score=50,
             risk_band="MODERATE",
             mode="rules",
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=utcnow() + timedelta(days=30),
         )
         db_session.add(scan)
         db_session.flush()
@@ -88,7 +88,7 @@ class TestDatabaseModels:
             risk_score=50,
             risk_band="MODERATE",
             mode="rules",
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=utcnow() + timedelta(days=30),
         )
         db_session.add(scan)
         db_session.flush()
@@ -106,7 +106,7 @@ class TestDatabaseModels:
             risk_score=50,
             risk_band="MODERATE",
             mode="rules",
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=utcnow() + timedelta(days=30),
         )
         db_session.add(scan)
         db_session.flush()
@@ -134,7 +134,7 @@ class TestDatabaseModels:
             risk_score=50,
             risk_band="MODERATE",
             mode="rules",
-            expires_at=datetime.utcnow() + timedelta(days=30),
+            expires_at=utcnow() + timedelta(days=30),
         )
         db_session.add(scan)
         db_session.flush()
@@ -283,7 +283,7 @@ class TestRepository:
 
     def test_cleanup_expired_scans(self, db_session: Session):
         scan = create_scan(db_session, input_types=["text"], risk_score=50, risk_band="MODERATE", category=None, uncertainty={"level": "low", "reasons": []}, mode="rules")
-        scan.expires_at = datetime.utcnow() - timedelta(days=1)
+        scan.expires_at = utcnow() - timedelta(days=1)
         db_session.commit()
 
         scan2 = create_scan(db_session, input_types=["text"], risk_score=10, risk_band="LOW", category=None, uncertainty={"level": "low", "reasons": []}, mode="rules")

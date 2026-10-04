@@ -5,7 +5,7 @@ from typing import List, Tuple
 # Phone number patterns (E.164 and common formats)
 PHONE_PATTERNS = [
     re.compile(r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'),  # US/Intl
-    re.compile(r'(\+?91[-.\s]?)?[6-9]\d{9}'),  # India
+    re.compile(r'(\+?91[-.\s]?)?[6-9]\d{4}[-.\s]?\d{5}'),  # India (incl. 5+5 spaced format)
     re.compile(r'\+?\d{1,3}[-.\s]?\d{4,14}'),  # Generic international
 ]
 
@@ -25,7 +25,7 @@ def mask_phone(match: re.Match) -> str:
     """Mask phone number keeping first 3 and last 2 digits."""
     phone = match.group(0)
     digits = re.sub(r'\D', '', phone)
-    if len(digits) >= 5:
+    if len(digits) >= 6:
         masked = digits[:3] + 'X' * (len(digits) - 5) + digits[-2:]
         # Preserve formatting roughly
         result = ''
@@ -40,6 +40,7 @@ def mask_phone(match: re.Match) -> str:
             else:
                 result += ch
         return result
+    # Too short to partially mask safely (5 digits would be a no-op)
     return '[PHONE]'
 
 
@@ -127,17 +128,17 @@ def extract_pii(text: str) -> dict:
     ids = []
 
     for pattern in PHONE_PATTERNS:
-        phones.extend(pattern.findall(text))
+        phones.extend(m.group(0) for m in pattern.finditer(text))
 
     emails.extend(EMAIL_PATTERN.findall(text))
 
     for pattern in ID_PATTERNS:
-        ids.extend(pattern.findall(text))
+        ids.extend(m.group(0) for m in pattern.finditer(text))
 
-    # Flatten tuples from findall
-    phones = [p[0] if isinstance(p, tuple) else p for p in phones]
-    emails = [e[0] if isinstance(e, tuple) else e for e in emails]
-    ids = [i[0] if isinstance(i, tuple) else i for i in ids]
+    # Deduplicate while preserving order
+    phones = list(dict.fromkeys(phones))
+    emails = list(dict.fromkeys(emails))
+    ids = list(dict.fromkeys(ids))
 
     return {"phones": phones, "emails": emails, "ids": ids}
 

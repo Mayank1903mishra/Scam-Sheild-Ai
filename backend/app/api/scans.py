@@ -9,6 +9,7 @@ from app.schemas.response import ScanResponse, ScanListItem, FeedbackResponse, E
 from app.db import get_db_session
 from app.db.repository import create_scan, get_scan, list_scans, delete_scan, submit_feedback
 from app.services import analyze_input
+from app.services.privacy import mask_pii
 
 
 router = APIRouter(prefix="/scans", tags=["scans"])
@@ -33,10 +34,16 @@ async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(g
     # Run analysis
     result = analyze_input(text=request.text, url=request.url)
 
-    # Save to database
+    input_types = []
+    if request.text:
+        input_types.append("text")
+    if request.url:
+        input_types.append("url")
+
+    # Save to database (PII masked before storage, per spec section 8)
     scan = create_scan(
         db,
-        input_types=result.module_scores.keys() if False else ["text"] + (["url"] if request.url else []),
+        input_types=input_types,
         risk_score=result.risk_score,
         risk_band=result.risk_band,
         category=result.category,
@@ -48,19 +55,14 @@ async def create_scan_endpoint(request: ScanTextRequest, db: Session = Depends(g
                 "id": e["id"],
                 "source": e["source"],
                 "reason": e["reason"],
-                "snippet": e["snippet"],
+                "snippet": mask_pii(e["snippet"])[0] if e["snippet"] else "",
                 "weight": e["weight"],
             }
             for e in result.evidence
         ],
     )
 
-    # Build response
-    input_types = []
-    if request.text:
-        input_types.append("text")
-    if request.url:
-        input_types.append("url")
+    # Build response (raw snippets returned only in immediate response for highlighting)
 
     return ScanResponse(
         id=scan.id,

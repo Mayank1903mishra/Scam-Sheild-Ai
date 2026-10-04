@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import UUID
 import json
 
-from app.db.models import Scan, Evidence, Feedback
+from app.db.models import Scan, Evidence, Feedback, utcnow
 from app.config import settings
 
 
@@ -21,7 +21,7 @@ def create_scan(
     masked_text: Optional[str] = None,
     evidence_list: Optional[List[Dict[str, Any]]] = None,
 ) -> Scan:
-    expires_at = datetime.utcnow() + timedelta(days=settings.retention_days)
+    expires_at = utcnow() + timedelta(days=settings.retention_days)
 
     scan = Scan(
         input_types=json.dumps(input_types),
@@ -89,7 +89,7 @@ def submit_feedback(db: Session, scan_id: str, helpful: bool, comment: Optional[
 
 
 def cleanup_expired_scans(db: Session) -> int:
-    now = datetime.utcnow()
+    now = utcnow()
     expired = db.query(Scan).filter(Scan.expires_at < now).all()
     count = len(expired)
     for scan in expired:
