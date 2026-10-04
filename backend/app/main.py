@@ -19,6 +19,7 @@ from app.exceptions import (
 )
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from app.db import init_db
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    init_db()
     yield
 
 
