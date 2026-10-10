@@ -25,6 +25,19 @@ def reset_rate_limits():
 
 
 @pytest.fixture(autouse=True)
+def disable_intel_lookups():
+    """Keep every test offline: external sources report "disabled" and no
+    outbound request is made. Individual intel tests opt back in with
+    monkeypatched adapters."""
+    from app.config import settings
+
+    previous = settings.intel_lookups_enabled
+    settings.intel_lookups_enabled = False
+    yield
+    settings.intel_lookups_enabled = previous
+
+
+@pytest.fixture(autouse=True)
 def clean_database():
     """Start (and finish) every test with a pristine database.
 

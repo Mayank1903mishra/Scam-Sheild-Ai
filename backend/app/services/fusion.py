@@ -184,10 +184,17 @@ def fuse_results(
     ocr_confidence: float = 0.0,
     input_text: str = "",
     ocr_text_length: Optional[int] = None,
+    intel_indicators: Optional[List[Dict[str, Any]]] = None,
 ) -> FusionResult:
     """
     Fuse results from multiple analysis modules.
     Uses bounded weighted sum for final score.
+
+    intel_indicators: normalized findings from external source adapters
+    (weight 0 advisory similarities, positive weights for confirmed
+    threat-list matches). They join the evidence list, so the documented
+    invariant risk_score == min(100, max(0, sum(evidence weights)))
+    keeps holding without double-counting rule-based indicators.
     """
     # Combine all indicators with source tracking
     all_indicators = []
@@ -202,6 +209,15 @@ def fuse_results(
         ind_copy["source"] = ind.get("source", "url")
         all_indicators.append(ind_copy)
 
+    # External intelligence findings (already carry their own
+    # match_type, retrieved_at, and explanation). They are reported under
+    # the single "intel" source so the API evidence Literal stays stable
+    # while the reason text still names the originating source.
+    for ind in intel_indicators or []:
+        ind_copy = ind.copy()
+        ind_copy["source"] = "intel"
+        all_indicators.append(ind_copy)
+
     # Module scores
     module_scores = {
         "text": text_result.get("score", 0),
@@ -214,11 +230,17 @@ def fuse_results(
     total_weight = sum(ind["weight"] for ind in all_indicators)
     risk_score = min(100, max(0, total_weight))
 
+    # Rule-based (text/url/ocr) indicators only: advisory intel findings
+    # must not mask "no indicators" conditions below.
+    rule_indicators = [
+        ind for ind in all_indicators if ind.get("source") in ("text", "url", "ocr")
+    ]
+
     # Determine risk band
     risk_band = score_to_band(risk_score)
 
     # Special case: if no indicators and very short input -> UNCERTAIN
-    if not all_indicators and len(input_text.strip()) < 20:
+    if not rule_indicators and len(input_text.strip()) < 20:
         risk_band = "UNCERTAIN"
 
     # Select category
@@ -229,7 +251,7 @@ def fuse_results(
         text_length=len(input_text),
         ocr_confidence=ocr_confidence,
         module_scores=module_scores,
-        indicators=all_indicators,
+        indicators=rule_indicators,
         ocr_text_length=ocr_text_length,
     )
 

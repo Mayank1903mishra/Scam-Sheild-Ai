@@ -29,7 +29,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp ../.env.example ../.env
+cp ../.env.example .env     # read from backend/.env (or ../.env at the repo root)
 # Edit .env as needed
 uvicorn app.main:app --reload
 ```
@@ -38,10 +38,12 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:5173 (talks to the backend on http://localhost:8000)
+npm run dev        # http://localhost:3000 (talks to the backend on http://localhost:8000)
 ```
-The dev origin `http://localhost:5173` is in the backend CORS allow-list.
-To point the UI at another backend, set `VITE_API_BASE` (e.g.
+The UI calls `http://localhost:8000` by default, so no configuration is
+needed when the backend runs on its default port. Both Vite dev ports
+(`3000` from `npm run dev`, `5173` from `vite`) are in the backend CORS
+allow-list. To point the UI at another backend, set `VITE_API_BASE` (e.g.
 `VITE_API_BASE=http://localhost:9000 npm run dev`).
 
 ### Run Tests

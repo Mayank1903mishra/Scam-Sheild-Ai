@@ -1,11 +1,12 @@
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from app.services.text_analyzer import analyze_text
 from app.services.url_analyzer import analyze_urls, extract_url_features
 from app.services.evidence import extract_entities_combined
 from app.services.fusion import fuse_results, FusionResult
 from app.services.explain import explain_indicators, generate_summary, get_disclaimer, format_evidence_for_display
 from app.services.privacy import mask_pii
+from app.services.intel import run_intel_lookups
 from app.config import settings
 
 
@@ -31,6 +32,9 @@ class AnalysisOutput:
     summary: str
     mode: str
     masked_text: Optional[str] = None
+    # One record per external source: whether it was checked, when, and
+    # how much evidence it contributed.
+    sources: List[Dict[str, Any]] = field(default_factory=list)
 
 
 def _merge_text_results(*results: Dict[str, Any]) -> Dict[str, Any]:
@@ -116,6 +120,18 @@ class InputManager:
         if input_data.ocr_text is not None:
             ocr_text_length = len(input_data.ocr_text.strip())
 
+        # External intelligence lookups (fail-open: adapters never raise and
+        # a disabled/failed source only reports itself as such).
+        intel_outcome = run_intel_lookups(
+            text=combined_text,
+            urls=urls,
+            indicator_ids=[
+                ind.get("id", "")
+                for res in (user_result, ocr_result, url_result)
+                for ind in res.get("indicators", [])
+            ],
+        )
+
         # Fuse results
         fusion_result = fuse_results(
             text_result=text_result,
@@ -123,6 +139,7 @@ class InputManager:
             ocr_confidence=input_data.ocr_confidence,
             input_text=combined_text,
             ocr_text_length=ocr_text_length,
+            intel_indicators=intel_outcome.findings,
         )
 
         # Explain indicators
@@ -153,6 +170,7 @@ class InputManager:
             summary=summary,
             mode="rules",
             masked_text=masked_text,
+            sources=intel_outcome.checks,
         )
 
 

@@ -31,6 +31,12 @@ dist/
 build/
 *.local
 
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+# Emitted when `tsc -b` compiles vite.config.ts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
 # IDE
 .vscode/
 .idea/

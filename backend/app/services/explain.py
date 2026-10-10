@@ -32,6 +32,9 @@ INDICATOR_EXPLANATIONS = {
     "URL_LONG_LENGTH": "The URL is unusually long, which can indicate obfuscation or tracking parameters.",
     "OFFICIAL_DOMAIN": "The communication uses an official company domain, which is a positive signal.",
     "VERIFIABLE_CONTACT": "The message provides verifiable contact information for the organization.",
+    # External intelligence findings (normally carry their own explanation).
+    "I4C_ADVISORY": "An official I4C advisory describes a similar fraud pattern (advisory similarity only - not a confirmed match).",
+    "SB_URL_MATCH": "The URL appears on a Google Safe Browsing threat list (confirmed match).",
 }
 
 
@@ -39,21 +42,30 @@ def explain_indicators(indicators: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     """
     Convert raw indicators to user-readable explanations.
     Returns list with id, reason (explanation), snippet, weight, source.
+
+    Indicators that already carry a rich "explanation" (external intelligence
+    findings cite their source, timestamp, and reference URL) keep it as-is.
     """
     explained = []
     for ind in indicators:
         ind_id = ind.get("id", "UNKNOWN")
-        explanation = INDICATOR_EXPLANATIONS.get(
+        explanation = ind.get("explanation") or INDICATOR_EXPLANATIONS.get(
             ind_id,
             f"Risk indicator: {ind.get('reason', ind_id)}"
         )
-        explained.append({
+        entry = {
             "id": ind_id,
             "source": ind.get("source", "text"),
             "reason": explanation,
             "snippet": ind.get("snippet", ""),
             "weight": ind.get("weight", 0),
-        })
+        }
+        # Preserve intel metadata (None for rule-based indicators).
+        if "match_type" in ind:
+            entry["match_type"] = ind.get("match_type")
+        if "retrieved_at" in ind:
+            entry["retrieved_at"] = ind.get("retrieved_at")
+        explained.append(entry)
     return explained
 
 

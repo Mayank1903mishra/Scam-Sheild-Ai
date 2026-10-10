@@ -9,7 +9,7 @@ from app.config import settings, get_max_upload_bytes
 from app.exceptions import AppError
 from app.ratelimit import limiter
 from app.schemas.request import ScanTextRequest, ScanUploadRequest, FeedbackRequest
-from app.schemas.response import ScanResponse, ScanListItem, FeedbackResponse, EvidenceItem, ExtractedData, UncertaintyInfo, ModuleScores
+from app.schemas.response import ScanResponse, ScanListItem, FeedbackResponse, EvidenceItem, ExtractedData, UncertaintyInfo, ModuleScores, SourceCheck
 from app.db import get_db_session
 from app.db.repository import create_scan, get_scan, list_scans, delete_scan, submit_feedback
 from app.services import analyze_input
@@ -80,6 +80,7 @@ def _build_scan_response(scan, result, input_types: List[str], ocr_text: Optiona
         recommendations=result.recommendations,
         disclaimer=result.disclaimer,
         mode=result.mode,
+        sources=[SourceCheck(**check) for check in (result.sources or [])],
         ocr_text=ocr_text,
     )
 

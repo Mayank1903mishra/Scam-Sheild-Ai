@@ -6,10 +6,22 @@ from uuid import UUID
 
 class EvidenceItem(BaseModel):
     id: str
-    source: Literal["text", "url", "ocr"]
+    # "intel" = finding contributed by an external source adapter
+    # (I4C advisory similarity or a Safe Browsing threat-list match).
+    source: Literal["text", "url", "ocr", "intel"]
     reason: str
     snippet: str
     weight: int
+
+
+class SourceCheck(BaseModel):
+    """One record per external source: whether it was checked, when, and
+    how much evidence it contributed."""
+    source: str
+    status: Literal["checked", "disabled", "skipped", "unavailable", "error"]
+    checked_at: str
+    detail: str = ""
+    evidence_count: int = 0
 
 
 class ExtractedData(BaseModel):
@@ -47,6 +59,10 @@ class ScanResponse(BaseModel):
     recommendations: List[str] = []
     disclaimer: str
     mode: Literal["rules", "ml", "demo"]
+    # External source checks for this analysis. Returned on scan creation
+    # and upload only (the checks are not persisted), so a history read
+    # returns an empty list.
+    sources: List[SourceCheck] = []
     # Text extracted by OCR from an uploaded image (immediate upload
     # response only; raw OCR text is not persisted by default).
     ocr_text: Optional[str] = None
