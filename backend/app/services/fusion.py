@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from app.services.ml_classifier import classify_with_ml, MLResult
 
 
 @dataclass
@@ -185,6 +186,7 @@ def fuse_results(
     input_text: str = "",
     ocr_text_length: Optional[int] = None,
     intel_indicators: Optional[List[Dict[str, Any]]] = None,
+    ml_result: Optional[MLResult] = None,
 ) -> FusionResult:
     """
     Fuse results from multiple analysis modules.
@@ -195,6 +197,9 @@ def fuse_results(
     threat-list matches). They join the evidence list, so the documented
     invariant risk_score == min(100, max(0, sum(evidence weights)))
     keeps holding without double-counting rule-based indicators.
+
+    ml_result: ML classifier result (probability scaled to 0-100).
+    Added as a module score and evidence item with weight derived from probability.
     """
     # Combine all indicators with source tracking
     all_indicators = []
@@ -218,11 +223,27 @@ def fuse_results(
         ind_copy["source"] = "intel"
         all_indicators.append(ind_copy)
 
+    # ML classifier result - add as evidence with weight = probability * 30 (max 30 points)
+    # This gives ML a meaningful but not dominant voice
+    if ml_result and ml_result.probability > 0:
+        ml_weight = int(ml_result.probability * 30)  # 0-30 points based on confidence
+        ml_indicator = {
+            "id": "ML_CLASSIFIER",
+            "name": f"ML classifier: {ml_result.label} ({ml_result.probability:.0%})",
+            "weight": ml_weight,
+            "category": "ML_SIGNAL",
+            "reason": f"ML model predicts {ml_result.label} with {ml_result.probability:.0%} probability",
+            "snippet": f"Probability: {ml_result.probability:.2f}, Confidence: {ml_result.confidence:.2f}",
+            "source": "ml",
+        }
+        all_indicators.append(ml_indicator)
+
     # Module scores
     module_scores = {
         "text": text_result.get("score", 0),
         "url": url_result.get("score", 0),
         "ocr_confidence": ocr_confidence,
+        "ml": ml_result.score if ml_result else 0,
     }
 
     # Calculate total weighted score

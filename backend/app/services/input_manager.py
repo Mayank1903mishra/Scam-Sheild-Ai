@@ -7,6 +7,7 @@ from app.services.fusion import fuse_results, FusionResult
 from app.services.explain import explain_indicators, generate_summary, get_disclaimer, format_evidence_for_display
 from app.services.privacy import mask_pii
 from app.services.intel import run_intel_lookups
+from app.services.ml_classifier import classify_with_ml
 from app.config import settings
 
 
@@ -132,6 +133,9 @@ class InputManager:
             ],
         )
 
+        # ML classifier (complementary signal)
+        ml_result = classify_with_ml(combined_text, input_data.url or "")
+
         # Fuse results
         fusion_result = fuse_results(
             text_result=text_result,
@@ -140,6 +144,7 @@ class InputManager:
             input_text=combined_text,
             ocr_text_length=ocr_text_length,
             intel_indicators=intel_outcome.findings,
+            ml_result=ml_result,
         )
 
         # Explain indicators
@@ -168,7 +173,7 @@ class InputManager:
             recommendations=fusion_result.recommendations,
             disclaimer=get_disclaimer(),
             summary=summary,
-            mode="rules",
+            mode="rules+ml",
             masked_text=masked_text,
             sources=intel_outcome.checks,
         )

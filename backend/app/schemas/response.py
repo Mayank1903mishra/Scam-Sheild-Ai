@@ -8,7 +8,8 @@ class EvidenceItem(BaseModel):
     id: str
     # "intel" = finding contributed by an external source adapter
     # (I4C advisory similarity or a Safe Browsing threat-list match).
-    source: Literal["text", "url", "ocr", "intel"]
+    # "ml" = finding contributed by the ML classifier (TF-IDF + Logistic Regression).
+    source: Literal["text", "url", "ocr", "intel", "ml"]
     reason: str
     snippet: str
     weight: int
@@ -58,7 +59,7 @@ class ScanResponse(BaseModel):
     extracted: ExtractedData
     recommendations: List[str] = []
     disclaimer: str
-    mode: Literal["rules", "ml", "demo"]
+    mode: Literal["rules", "ml", "rules+ml", "demo"]
     # External source checks for this analysis. Returned on scan creation
     # and upload only (the checks are not persisted), so a history read
     # returns an empty list.
@@ -80,7 +81,7 @@ class ScanListItem(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str = "0.1.0"
-    mode: Literal["rules", "ml", "demo"]
+    mode: Literal["rules", "ml", "rules+ml", "demo"]
 
 
 class FeedbackResponse(BaseModel):

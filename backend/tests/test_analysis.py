@@ -390,7 +390,7 @@ class TestInputManager:
         assert len(result.evidence) > 0
         assert len(result.recommendations) > 0
         assert result.disclaimer
-        assert result.mode == "rules"
+        assert result.mode == "rules+ml"
 
     def test_analyze_input_url_only(self):
         result = analyze_input(url="https://bit.ly/phish")

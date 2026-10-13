@@ -8,5 +8,12 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    mode = "demo" if settings.demo_mode else "rules"
+    if settings.demo_mode:
+        mode = "demo"
+    else:
+        try:
+            from app.services.ml_classifier import get_ml_classifier
+            mode = "rules+ml" if get_ml_classifier().is_available() else "rules"
+        except Exception:
+            mode = "rules"
     return HealthResponse(status="ok", mode=mode)

@@ -329,14 +329,15 @@ class TestUploadAPI:
         assert body["modules"]["ocr_confidence"] == 0.87
         assert 0 <= body["risk_score"] <= 100
         assert body["risk_band"] in ("LOW", "MODERATE", "HIGH", "VERY_HIGH", "UNCERTAIN")
-        assert body["mode"] == "rules"
+        assert body["mode"] == "rules+ml"
         assert body["score_note"]
         assert body["disclaimer"]
         assert body["recommendations"]
         assert body["uncertainty"]["level"] in ("low", "medium", "high")
         # OCR-derived evidence carries the "ocr" source
         sources = {e["source"] for e in body["evidence"]}
-        assert sources == {"ocr"}
+        assert "ocr" in sources
+        assert "ml" in sources
         assert any(e["id"] == "UPFRONT_PAYMENT" for e in body["evidence"])
         assert body["risk_score"] >= 25  # upfront payment indicator at minimum
 

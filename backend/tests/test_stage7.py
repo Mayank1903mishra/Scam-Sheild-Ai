@@ -96,7 +96,7 @@ class TestIntegrationJourneys:
         assert scan["recommendations"] == get_recommendations(scan["risk_band"])
         assert "provisional" in scan["score_note"]
         assert "not proof of fraud" in scan["disclaimer"]
-        assert scan["mode"] == "rules"
+        assert scan["mode"] == "rules+ml"
         assert scan["ocr_text"] is None
 
         # 2. Appears in history

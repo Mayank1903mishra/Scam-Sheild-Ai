@@ -181,7 +181,7 @@ class TestEvidenceTraceability:
         result = self._full_scan()
         for item in result.evidence:
             assert set(item.keys()) >= {"id", "source", "reason", "snippet", "weight"}
-            assert item["source"] in ("text", "url", "ocr")
+            assert item["source"] in ("text", "url", "ocr", "ml")
             assert isinstance(item["weight"], int)
             assert item["reason"]
 

@@ -8,7 +8,7 @@ async def test_health_endpoint(async_client):
     data = response.json()
     assert data["status"] == "ok"
     assert "version" in data
-    assert data["mode"] in ["rules", "ml", "demo"]
+    assert data["mode"] in ["rules", "ml", "rules+ml", "demo"]
 
 
 @pytest.mark.asyncio

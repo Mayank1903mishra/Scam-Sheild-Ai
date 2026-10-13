@@ -35,6 +35,8 @@ INDICATOR_EXPLANATIONS = {
     # External intelligence findings (normally carry their own explanation).
     "I4C_ADVISORY": "An official I4C advisory describes a similar fraud pattern (advisory similarity only - not a confirmed match).",
     "SB_URL_MATCH": "The URL appears on a Google Safe Browsing threat list (confirmed match).",
+    # ML classifier
+    "ML_CLASSIFIER": "Machine learning model prediction based on text patterns learned from labeled examples.",
 }
 
 
