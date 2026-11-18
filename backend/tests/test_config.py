@@ -6,7 +6,7 @@ import pytest
 
 from app.config import Settings, get_allowed_origins
 
-ENV_EXAMPLE = Path(__file__).resolve().parents[2] / ".env.example"
+ENV_EXAMPLE = Path(__file__).resolve().parent.parent / ".env.example"
 
 
 @pytest.fixture

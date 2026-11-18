@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 from app.schemas.request import ScanTextRequest, ScanUploadRequest, FeedbackRequest
 from app.schemas.response import (
     ScanResponse,
@@ -42,7 +43,7 @@ class TestScanTextRequest:
         assert req.has_input() is False
 
     def test_both_empty_raises_validation_error(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             ScanTextRequest(text="", url="")
 
     def test_whitespace_only_becomes_none(self):
