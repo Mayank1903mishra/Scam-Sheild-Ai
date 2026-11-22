@@ -1,5 +1,15 @@
 export type InputKind = "paste" | "url" | "screenshot";
 export type RiskBand = "high" | "medium" | "low" | "uncertain";
+export type OfferVerdict = "SELECT" | "REJECT" | "VERIFY";
+
+export interface Signal {
+  id: string;
+  title: string;
+  reason: string;
+  evidence: string;
+  severity: "high" | "medium" | "low";
+  type: "positive" | "negative";
+}
 
 /** Backend origin used when VITE_API_BASE is not set. Without this the UI
  * would silently run on demo data and never reach the FastAPI service. */
@@ -66,6 +76,12 @@ export interface ScanResult {
   mode: "live" | "demo";
   disclaimer: string;
   scoreNote: string;
+  /** Smart offer decision: SELECT / REJECT / VERIFY BEFORE SELECTING. */
+  actionVerdict: OfferVerdict;
+  verdictConfidence: "high" | "medium" | "low";
+  /** Evidence-backed reasons to select (green) / reject (red). */
+  positiveSignals: Signal[];
+  negativeSignals: Signal[];
   modules: Array<{ name: string; score: number; label: string; color: "coral" | "amber" | "violet" | "mint" }>;
   evidence: EvidenceItem[];
   entities: string[];
@@ -217,6 +233,97 @@ function mapIntel(sources: BackendScanResponse["sources"]): ScanResult["intel"] 
   };
 }
 
+const RED_FLAG_IDS = new Set([
+  "CREDENTIAL_REQUEST",
+  "PAYMENT_SCAM",
+  "UPFRONT_PAYMENT",
+  "PAYMENT_PRESSURE",
+  "URGENCY",
+  "FAKE_JOB",
+  "UNREALISTIC_SALARY",
+  "GUARANTEED_SELECTION",
+  "FAKE_INTERNSHIP",
+  "FAKE_OFFER_LETTER",
+  "FAKE_AMBASSADOR",
+  "FAKE_SCHOLARSHIP",
+  "FAKE_TRAINING",
+  "FAKE_PLACEMENT",
+  "URL_BRAND_LOOKALIKE",
+  "URL_PUNYCODE",
+  "URL_IP_HOST",
+  "PERSONAL_INFO_REQUEST",
+]);
+const LEGIT_IDS = new Set(["OFFICIAL_DOMAIN", "VERIFIABLE_CONTACT"]);
+const SEV_ORDER = { high: 3, medium: 2, low: 1 };
+
+function computeOfferVerdict(backend: BackendScanResponse): {
+  verdict: OfferVerdict;
+  confidence: "high" | "medium" | "low";
+  positive: Signal[];
+  negative: Signal[];
+} {
+  const { risk_score, risk_band, evidence, uncertainty } = backend;
+  const score = risk_score;
+  const band = risk_band;
+
+  const neg: Signal[] = [];
+  const pos: Signal[] = [];
+
+  for (const ind of evidence) {
+    const id = ind.id;
+    const w = ind.weight;
+    const snippet = ind.snippet || "";
+    const isRedFlag = RED_FLAG_IDS.has(id) || (w > 0 && !LEGIT_IDS.has(id));
+    const isLegit = LEGIT_IDS.has(id) || w < 0;
+    if (isRedFlag) {
+      neg.push({
+        id,
+        title: ind.reason,
+        reason: ind.reason,
+        evidence: snippet,
+        severity: w >= 25 ? "high" : w >= 12 ? "medium" : "low",
+        type: "negative",
+      });
+    } else if (isLegit) {
+      pos.push({
+        id,
+        title: ind.reason,
+        reason: ind.reason,
+        evidence: snippet || "Verified legitimate signal present",
+        severity: "medium",
+        type: "positive",
+      });
+    }
+  }
+
+  const hasRedFlag = neg.length > 0;
+  const hasLegit = pos.length > 0;
+
+  let verdict: OfferVerdict = "VERIFY";
+  let confidence: "high" | "medium" | "low" = "medium";
+
+  if (score >= 50 || hasRedFlag) {
+    verdict = "REJECT";
+    confidence = score >= 70 || neg.some((s) => s.severity === "high") ? "high" : "medium";
+  } else if (score <= 30 && hasLegit && !hasRedFlag) {
+    verdict = "SELECT";
+    confidence = hasLegit && score <= 20 ? "high" : "medium";
+  } else {
+    verdict = "VERIFY";
+    confidence = uncertainty.level === "high" ? "low" : "medium";
+  }
+
+  neg.sort((a, b) => SEV_ORDER[b.severity] - SEV_ORDER[a.severity]);
+  pos.sort((a, b) => SEV_ORDER[b.severity] - SEV_ORDER[a.severity]);
+
+  return {
+    verdict,
+    confidence,
+    positive: pos.slice(0, 4),
+    negative: neg.slice(0, 4),
+  };
+}
+
 function convertBackendResponse(backend: BackendScanResponse): ScanResult {
   const band = mapBand(backend.risk_band);
   const inputType = mapInputType(backend.input_types);
@@ -224,6 +331,7 @@ function convertBackendResponse(backend: BackendScanResponse): ScanResult {
   const category = backend.category || "No strong indicators";
   const uncertainty = backend.uncertainty.level;
   const verdict = getVerdict(band, category);
+  const offer = computeOfferVerdict(backend);
   const summary = backend.evidence.length > 0
     ? `Found ${backend.evidence.length} signal(s) totaling ${backend.risk_score} points — ${category.toLowerCase()}.`
     : "No risk indicators detected in your input.";
@@ -251,6 +359,10 @@ function convertBackendResponse(backend: BackendScanResponse): ScanResult {
       "Verify the sender through official channels if unsure."
     ],
     intel: mapIntel(backend.sources),
+    actionVerdict: offer.verdict,
+    verdictConfidence: offer.confidence,
+    positiveSignals: offer.positive,
+    negativeSignals: offer.negative,
   };
 }
 
@@ -418,6 +530,13 @@ const mockResult: ScanResult = {
     "Report the message to the platform, then block the sender.",
   ],
   intel: { label: "External lookups", detail: "Optional checks are off — your content stays local.", status: "off" },
+  actionVerdict: "REJECT",
+  verdictConfidence: "high",
+  positiveSignals: [],
+  negativeSignals: [
+    { id: "e2", title: "Credential request", reason: "Legitimate support teams never ask for a one-time password in chat.", evidence: "…send the 6-digit code to keep your account active…", severity: "high", type: "negative" },
+    { id: "e1", title: "Urgency + countdown", reason: "The message says access will be removed today unless you act immediately.", evidence: "…verify your account within 15 minutes…", severity: "high", type: "negative" },
+  ],
 };
 
 const mockHistory: HistoryItem[] = [
@@ -451,6 +570,13 @@ export function getMockResult(kind: InputKind, id = `scan_${Math.random().toStri
       ],
       entities: ["short.ly/3x9a", "₹49 processing fee", "giveaway prize"],
       recommendations: ["Do not pay a fee to claim a surprise prize.", "Preview the destination with a URL expander or search the official brand yourself.", "If you already entered details, change the password and contact your bank."],
+      actionVerdict: "VERIFY",
+      verdictConfidence: "medium",
+      positiveSignals: [],
+      negativeSignals: [
+        { id: "u2", title: "Payment pressure", reason: "A giveaway that asks for a processing fee is a common scam pattern.", evidence: "…pay ₹49 to release your prize…", severity: "high", type: "negative" },
+        { id: "u1", title: "Shortener hides destination", reason: "Short links make it harder to preview where you will land before opening.", evidence: "short.ly/3x9a → destination hidden", severity: "medium", type: "negative" },
+      ],
     };
   }
   if (kind === "screenshot") {
@@ -477,6 +603,13 @@ export function getMockResult(kind: InputKind, id = `scan_${Math.random().toStri
       entities: ["campus.example", "club@campus.example", "Friday 4 PM"],
       ocrText: "Campus coding club meetup · Friday 4 PM · Room B204 · contact club@campus.example",
       recommendations: ["Check the club's official campus page if you want an extra confirmation.", "Avoid sharing personal details just to RSVP to an event.", "If the poster is being forwarded, keep the original source visible."],
+      actionVerdict: "SELECT",
+      verdictConfidence: "medium",
+      positiveSignals: [
+        { id: "o1", title: "No credential request", reason: "The extracted text does not ask for a password, OTP, or account recovery code.", evidence: "no login or verification language found", severity: "low", type: "positive" },
+        { id: "o2", title: "Campus context", reason: "The poster uses a campus contact and a normal event time without urgency pressure.", evidence: "Friday 4 PM · club@campus.example", severity: "low", type: "positive" },
+      ],
+      negativeSignals: [],
     };
   }
   return { ...mockResult, id, inputType: "paste" };
