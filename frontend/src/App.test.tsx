@@ -111,7 +111,7 @@ describe("scan flow", () => {
     expect(screen.queryByText(/DEMO DATA/i)).toBeNull();
     // Evidence snippets render as text, never as markup.
     expect(container.querySelector("img")).toBeNull();
-    expect(screen.getByText(/onerror/)).toBeTruthy();
+    expect(screen.getAllByText(/onerror/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("labels the result as demo data when the backend is unreachable", async () => {

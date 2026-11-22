@@ -24,6 +24,7 @@ declare module 'lucide-react' {
   export const FileSearch2: LucideIcon;
   export const Fingerprint: LucideIcon;
   export const Flag: LucideIcon;
+  export const Globe: LucideIcon;
   export const History: LucideIcon;
   export const Inbox: LucideIcon;
   export const Info: LucideIcon;
@@ -31,6 +32,7 @@ declare module 'lucide-react' {
   export const Link2: LucideIcon;
   export const LockKeyhole: LucideIcon;
   export const MessageCircleWarning: LucideIcon;
+  export const Moon: LucideIcon;
   export const MousePointer2: LucideIcon;
   export const Network: LucideIcon;
   export const RotateCcw: LucideIcon;
@@ -39,6 +41,7 @@ declare module 'lucide-react' {
   export const Shield: LucideIcon;
   export const ShieldAlert: LucideIcon;
   export const Sparkles: LucideIcon;
+  export const Sun: LucideIcon;
   export const Trash2: LucideIcon;
   export const UploadCloud: LucideIcon;
   export const WandSparkles: LucideIcon;
