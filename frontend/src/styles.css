@@ -37,6 +37,20 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background: radial-gradient(circle at 76% 12%, rgba(64, 85, 123, 0.14), transparent 32rem), #0d1117;
+  animation: bg-shift 20s ease-in-out infinite;
+}
+@keyframes bg-shift {
+  0%, 100% { transform: translate(1px, 1px) scale(1); }
+  10% { transform: translate(-1px, -2px) scale(1.01); }
+  20% { transform: translate(-3px, 0px) scale(0.99); }
+  30% { transform: translate(0px, 1px) scale(1.02); }
+  40% { transform: translate(2px, -1px) scale(0.99); }
+  50% { transform: translate(1px, 2px) scale(1.01); }
+  60% { transform: translate(-1px, -1px) scale(1); }
+  70% { transform: translate(-2px, 0px) scale(1.02); }
+  80% { transform: translate(1px, 1px) scale(0.99); }
+  90% { transform: translate(2px, -2px) scale(1.01); }
+  100% { transform: translate(-1px, 1px) scale(1); }
 }
 
 button,
