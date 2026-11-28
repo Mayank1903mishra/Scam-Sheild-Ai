@@ -9,7 +9,7 @@ import pytest
 
 from app.config import settings
 from app.services.explain import explain_indicators
-from app.services.intel import IntelOutcome, i4c, run_intel_lookups, safebrowsing
+from app.services.intel import IntelOutcome, i4c, run_intel_lookups, safebrowsing, tinyfish
 from app.services.intel import base as intel_base
 
 
@@ -40,7 +40,8 @@ class StubClient:
         self.closed = False
         self.urls = []
 
-    def post(self, url, json=None):
+    def post(self, url, json=None, headers=None):
+        self.headers = headers
         self.urls.append(url)
         if self.error is not None:
             raise self.error
@@ -70,11 +71,14 @@ class TestRunIntelLookups:
 
         monkeypatch.setattr(i4c, "lookup", explode)
         monkeypatch.setattr(safebrowsing, "lookup", explode)
+        monkeypatch.setattr(tinyfish, "lookup", explode)
 
         outcome = run_intel_lookups(text="anything", urls=["http://example.com"])
 
         assert outcome.findings == []
-        assert [check["source"] for check in outcome.checks] == ["i4c", "safebrowsing"]
+        assert [check["source"] for check in outcome.checks] == [
+            "i4c", "safebrowsing", "tinyfish"
+        ]
         assert {check["status"] for check in outcome.checks} == {"disabled"}
 
     def test_enabled_runs_both_adapters_and_recounts_evidence(self, monkeypatch):
@@ -112,6 +116,7 @@ class TestRunIntelLookups:
 
         monkeypatch.setattr(i4c, "lookup", boom)
         monkeypatch.setattr(safebrowsing, "lookup", boom)
+        monkeypatch.setattr(tinyfish, "lookup", boom)
 
         outcome = run_intel_lookups(text="hello")
 
@@ -242,6 +247,7 @@ class TestIntelInAnalysisPipeline:
         assert [source["source"] for source in scan["sources"]] == [
             "i4c",
             "safebrowsing",
+            "tinyfish",
         ]
         assert {source["status"] for source in scan["sources"]} == {"disabled"}
         assert all(item["source"] != "intel" for item in scan["evidence"])

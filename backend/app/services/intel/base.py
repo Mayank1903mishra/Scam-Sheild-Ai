@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # Source identifiers (stable API values)
 SOURCE_I4C = "i4c"
 SOURCE_SAFEBROWSING = "safebrowsing"
+SOURCE_TINYFISH = "tinyfish"
 
 # Status values for a source check:
 #   checked     - the source was queried successfully

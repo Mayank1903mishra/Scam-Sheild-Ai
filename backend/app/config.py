@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # Google Safe Browsing Lookup API v4. Empty = source reported as
     # disabled; the key is read from the environment and never committed.
     google_safe_browsing_api_key: str = ""
+    # TinyFish web agent (optional URL assessment). Never commit the key.
+    tinyfish_api_key: str = ""
+    tinyfish_enabled: bool = True
+    tinyfish_timeout_seconds: float = 20.0
+    tinyfish_max_urls: int = 1
+    tinyfish_endpoint: str = "https://agent.tinyfish.ai/v1/automation/run"
     # Official I4C (Ministry of Home Affairs) public resource pages.
     i4c_advisory_url: str = "https://cybercrime.gov.in/Webform/Advisory.aspx"
     i4c_digest_url: str = "https://cybercrime.gov.in/Webform/daily-digest.aspx"

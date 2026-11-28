@@ -9,13 +9,15 @@ Sources:
                         cybercrime.gov.in (advisory similarity, weight 0).
   * ``safebrowsing``  - Google Safe Browsing Lookup API v4 (confirmed
                         threat-list matches, weight 40, key required).
+  * ``tinyfish``      - TinyFish web agent (live URL page assessment, advisory
+                        weight 0, key required).
 
-Absence of findings from either source is never proof of safety.
+Absence of findings from any source is never proof of safety.
 """
 from typing import Any, Dict, List, Optional
 
 from app.config import settings
-from app.services.intel import i4c, safebrowsing
+from app.services.intel import i4c, safebrowsing, tinyfish
 from app.services.intel.base import (
     CheckTuple,
     dedupe_findings,
@@ -53,7 +55,7 @@ def run_intel_lookups(
 ) -> IntelOutcome:
     """Query both sources independently; never raises.
 
-    When ``settings.intel_lookups_enabled`` is false, both sources report
+    When ``settings.intel_lookups_enabled`` is false, all three sources report
     "disabled" without any outbound request.
     """
     if not settings.intel_lookups_enabled:
@@ -63,6 +65,7 @@ def run_intel_lookups(
             [
                 make_check(i4c.SOURCE_I4C, "disabled", detail=detail),
                 make_check(safebrowsing.SOURCE_SAFEBROWSING, "disabled", detail=detail),
+                make_check(tinyfish.SOURCE_TINYFISH, "disabled", detail=detail),
             ],
         )
 
@@ -78,9 +81,15 @@ def run_intel_lookups(
         urls=urls,
     )
 
-    findings = dedupe_findings(i4c_findings + sb_findings)
-    checks = recount_checks([i4c_check, sb_check], findings)
+    tf_findings, tf_check = _run(
+        tinyfish.lookup,
+        {"source": tinyfish.SOURCE_TINYFISH},
+        urls=urls,
+    )
+
+    findings = dedupe_findings(i4c_findings + sb_findings + tf_findings)
+    checks = recount_checks([i4c_check, sb_check, tf_check], findings)
     return IntelOutcome(findings, checks)
 
 
-__all__ = ["IntelOutcome", "run_intel_lookups", "i4c", "safebrowsing"]
+__all__ = ["IntelOutcome", "run_intel_lookups", "i4c", "safebrowsing", "tinyfish"]

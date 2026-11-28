@@ -418,17 +418,16 @@ h3 {
   box-shadow: 0 35px 100px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.08);
   padding: 20px;
   border-radius: 15px;
-  transform: perspective(1200px) rotateY(-2deg) rotateX(1deg);
+  transform: none;
   transition: transform 0.45s cubic-bezier(0.2, 0.85, 0.3, 1), box-shadow 0.35s;
 }
 
 .detector-card:hover {
-  transform: perspective(1200px) rotateY(1.5deg) rotateX(-1deg) translateY(-4px);
+  transform: none;
   box-shadow: 0 40px 110px rgba(0, 0, 0, 0.46), 0 0 0 1px rgba(215, 255, 100, 0.09);
 }
 
 .tilt-card {
-  will-change: transform;
 }
 
 .detector-topline,
@@ -2461,6 +2460,174 @@ kbd {
   font-size: 12px;
   text-align: center;
   font-style: italic;
+}
+
+/* ---------- Larger, easier-to-read text ---------- */
+body { font-size: 17px; line-height: 1.65; }
+.section-label, .eyebrow, .panel-head h2, .result-head, .result-meta, .scan-hint,
+.evidence-snippet, .evidence-detail, .recommendation p, .uncertainty-reasons li,
+.uncertainty-note, .fineprint-disclaimer, .fineprint-note, .signal-reason,
+.signal-evidence, .offer-meta, .verify-note, .empty-msg, .history-info p,
+.history-toolbar, .privacy-strip, .footer, .topbar-center, .upload-zone small,
+.module-row small, .entity-cloud, .ocr-panel p { font-size: 14px !important; line-height: 1.55; }
+.signal-title, .evidence-title, .history-info h3, .module-label, .meta-row,
+.recommendation-number, .signal-count, .evidence-total { font-size: 15px !important; }
+h1 { font-size: 2.3rem !important; }
+h2 { font-size: 1.5rem !important; }
+h3 { font-size: 1.2rem !important; }
+textarea { font-size: 16px !important; }
+.tab, .nav-link, .scan-button, .feedback-button, .text-button, .history-open,
+.copy-button, .back-button { font-size: 15px !important; }
+
+/* ---------- Enhanced hover lift + cursor-reactive glow ---------- */
+.cursor-orb {
+  width: 38rem;
+  height: 38rem;
+  left: calc(var(--cursor-x) - 19rem);
+  top: calc(var(--cursor-y) - 19rem);
+  transition: left 0.1s ease-out, top 0.1s ease-out, background 0.2s ease, filter 0.3s ease;
+}
+.app-shell:has(button:hover) .cursor-orb,
+.app-shell:has(.panel:hover) .cursor-orb {
+  background: radial-gradient(circle, rgba(215, 255, 100, 0.22), transparent 70%);
+  filter: blur(20px);
+  box-shadow: 0 0 0 1px rgba(215, 255, 100, 0.2);
+}
+.app-shell:has(.result-hero:hover) .cursor-orb,
+.app-shell:has(.offer-decision:hover) .cursor-orb,
+.app-shell:has(.panel:hover) .cursor-orb {
+  background: radial-gradient(circle, rgba(215, 255, 100, 0.28), transparent 75%);
+  filter: blur(16px);
+  box-shadow: 0 0 0 2px rgba(215, 255, 100, 0.3);
+}
+button, .panel, .evidence-row, .history-row, .signal-row, .upload-zone,
+.tab, .nav-link, .entity-cloud span {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease,
+    background 0.15s ease, color 0.15s ease;
+  will-change: transform;
+}
+button:hover, .tab:hover, .nav-link:hover {
+  transform: translateY(-3px) !important;
+  filter: brightness(1.2) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+.panel:hover, .evidence-row:hover, .history-row:hover, .signal-row:hover,
+.upload-zone:hover {
+  transform: translateY(-5px) !important;
+  border-color: rgba(215, 255, 100, 0.55) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(215, 255, 100, 0.18) !important;
+}
+.entity-cloud span:hover { transform: scale(1.12) !important; color: var(--lime) !important; }
+
+/* ---------- Bigger type ---------- */
+html { font-size: 19px; }
+body { font-size: 19px; }
+p, li, span, small, button, label, textarea, code { line-height: 1.7; }
+.slide-frame, .result-layout { font-size: 17px; }
+.score-core strong, .history-score strong, .big-number { font-size: 2.4rem !important; }
+
+/* ---------- Result panel (flat, no 3D) ---------- */
+.result-hero, .offer-decision, .panel {
+  transform-style: none;
+  will-change: none;
+  animation: none;
+}
+.result-hero:hover, .offer-decision:hover, .panel:hover {
+  transform: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.score-orbit {
+  animation: none;
+  transform-style: none;
+}
+.orbit-ring { transform-style: none; }
+
+/* ---------- Key points highlight ---------- */
+.key-points {
+  margin: 14px 18px 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(215, 255, 100, 0.28);
+  background: linear-gradient(120deg, rgba(215, 255, 100, 0.09), rgba(116, 199, 255, 0.06));
+  box-shadow: inset 0 0 24px rgba(215, 255, 100, 0.04);
+}
+.key-points-label { font-size: 12px; font-weight: 800; letter-spacing: 1.2px; color: var(--lime); }
+.key-reason { margin: 6px 0 10px; font-size: 16px; font-weight: 700; color: var(--ink); }
+.key-points ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.key-points li { font-size: 15px; line-height: 1.5; color: var(--muted); }
+.key-points li b { color: var(--ink); }
+.kp-tag { display: inline-block; margin-right: 8px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; color: #fff; }
+.kp-tag.negative { background: #ef4444; }
+.kp-tag.positive { background: #22c55e; }
+
+/* ---------- Fraud alert panel ---------- */
+.fraud-alert {
+  background: rgba(255, 114, 94, 0.1);
+  border: 1px solid rgba(255, 114, 94, 0.3);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 16px;
+}
+.fraud-alert-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fraud-alert-icon {
+  color: var(--coral);
+  font-size: 20px;
+}
+.fraud-alert-head h3 {
+  color: var(--coral);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+.fraud-alert-points {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.fraud-alert-points li {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.fraud-alert-points b {
+  color: var(--coral);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ---------- Outcome hover ---------- */
+/* 3D removed - panel stays flat */
+
+/* ---------- Score + rating ---------- */
+.score-core strong, .offer-badge .badge-label, .verdict-copy h1 { font-size: 2.6rem !important; font-weight: 900 !important; color: var(--lime) !important; text-shadow: none; }
+.score-core, .offer-badge, .verdict-copy {
+  transform-style: none;
+  will-change: none;
+}
+.score-orbit:hover .score-core, .offer-decision:hover .offer-badge, .result-hero:hover .verdict-copy {
+  animation: none !important;
+}
+
+/* ---------- Stable result panel (flat) ---------- */
+.result-hero, .offer-decision, .result-grid .panel, .key-points,
+.score-orbit, .score-core, .offer-badge, .verdict-copy {
+  animation: none !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transform: none;
+}
+.result-hero:hover, .offer-decision:hover, .result-grid .panel:hover,
+.key-points:hover, .score-orbit:hover .score-core,
+.offer-decision:hover .offer-badge, .result-hero:hover .verdict-copy {
+  transform: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 /* ---------- Reduced motion ---------- */
